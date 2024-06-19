@@ -18,7 +18,7 @@ class LaserCutterFull:
                 "num_divisions": ("INT", {
                     "default": 6, 
                     "min": 2, 
-                    "max": 10, 
+                    "max": 6, 
                     "step": 1, 
                     "display": "number"
                 }),
