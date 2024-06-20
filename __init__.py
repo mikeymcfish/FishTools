@@ -6,7 +6,6 @@
 """
 from .LaserCutterFull import LaserCutterFull
 from .Deptherize import Deptherize
-from .simplifySVG import SimplifySVG
 
 # I copied this init from LtCmData
 version_str = "0.1"
@@ -14,17 +13,14 @@ print(f"### Loading: FishTools ({version_str})")
 
 node_list = [
     "LaserCutterFull",
-    "Deptherize",
-    "SimplifySVG"
+    "Deptherize"
 ]
 
 NODE_CLASS_MAPPINGS = {
     "LaserCutterFull": LaserCutterFull,
-    "Deptherize" : Deptherize,
-    "SimplifySVG": SimplifySVG
+    "Deptherize" : Deptherize
     }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LaserCutterFull": "LaserCutterFull",
-    "Deptherize" : "Deptherize",
-    "SimplifySVG" : "SimplifySVG"
+    "Deptherize" : "Deptherize"
     }
