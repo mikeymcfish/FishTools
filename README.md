@@ -44,6 +44,10 @@ The `LaserCutterFull` node processes an outline image and a depth map to generat
 
 ## Deptherize
 
+### NOTE: 
+
+The current version of LaserCutterFull does not work with Deptherize (which is really only for making a fake preview anyway)
+
 ### Description
 
 The `Deptherize` node converts SVG data into a depth map image. Each layer in the SVG data is assigned a grayscale value to represent depth.
