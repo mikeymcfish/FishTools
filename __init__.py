@@ -8,7 +8,7 @@ from .LaserCutterFull import LaserCutterFull
 from .Deptherize import Deptherize
 
 # I copied this init from LtCmData
-version_str = "0.1"
+version_str = "0.2"
 print(f"### Loading: FishTools ({version_str})")
 
 node_list = [

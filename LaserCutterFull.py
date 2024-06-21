@@ -3,6 +3,10 @@ import numpy as np
 import torch
 import svgwrite
 from skimage import measure
+from PIL import Image, ImageDraw
+import vtracer
+import lxml.etree as ET
+import re
 
 class LaserCutterFull:
     def __init__(self):
@@ -27,6 +31,36 @@ class LaserCutterFull:
                 "shape_similarity_threshold": ("FLOAT", {"default": 0.01, "min": 0.0, "max": 1.0, "step": 0.001}),
                 "min_shape_area": ("FLOAT", {"default": 250.0, "min": 0.0, "max": 1000.0, "step": 1.0}),
                 "apply_blur": ("BOOLEAN", {"default": False}),
+                "corner_threshold" : ("INT", {
+                    "default": 60, 
+                    "min": 0, 
+                    "max": 100, 
+                    "step": 1, 
+                    "display": "number"
+                }),
+                "length_threshold": ("FLOAT", {"default": 4.0, "min": 0.0, "max": 10.0, "step": 0.1}),
+                "max_iterations" : ("INT", {
+                    "default": 10, 
+                    "min": 1, 
+                    "max": 20, 
+                    "step": 1, 
+                    "display": "number"
+                }),
+                "splice_threshold" : ("INT", {
+                    "default": 45, 
+                    "min": 1, 
+                    "max": 100, 
+                    "step": 1, 
+                    "display": "number"
+                }),
+                "path_precision" : ("INT", {
+                    "default": 3, 
+                    "min": 1, 
+                    "max": 10, 
+                    "step": 1, 
+                    "display": "number"
+                }),
+                          
             },
         }
 
@@ -54,7 +88,6 @@ class LaserCutterFull:
             if cv2.contourArea(contour) < min_shape_area:
                 continue
             x, y, w, h = cv2.boundingRect(contour)
-            ##HARDCODED DIMENSIONS
             if w > (0.9 * 1024) and h > (0.9 * 1024):
                 continue
             mask = np.zeros_like(depthmap)
@@ -124,23 +157,140 @@ class LaserCutterFull:
 
         return layer_images, layer_contours, shapes_in_layers
 
-    def convert_to_svg(self, layer_contours, base_layer_contours, shape):
-        svg_document = svgwrite.Drawing(size=(f'{shape[1]}px', f'{shape[0]}px'))
-        for layer_index, contours in layer_contours.items():
-            group = svg_document.add(svg_document.g(id=f'layer_{layer_index}'))
-            for contour, svg_color in contours:
-                points = [(int(point[0][0]), int(point[0][1])) for point in contour]
-                points.append(points[0])  # Close the contour
-                group.add(svg_document.polyline(points, fill='none', stroke=svg_color))
-        # Adding base layer
-        base_layer_group = svg_document.add(svg_document.g(id='layer_6', stroke='black'))
-        for contour in base_layer_contours:
-            points = [(int(point[0][0]), int(point[0][1])) for point in contour]
-            points.append(points[0])  # Close the contour
-            base_layer_group.add(svg_document.polyline(points, fill='none'))
-        return svg_document.tostring()
+    def contours_to_image(self, contours, shape, debug_info):
+        image = Image.new('L', (shape[1], shape[0]), 255)
+        draw = ImageDraw.Draw(image)
+        
+        for contour_info in contours:
+            if isinstance(contour_info, tuple):
+                contour = contour_info[0]  # Extract the contour if it's a tuple
+            else:
+                contour = contour_info  # Use the contour directly if it's not a tuple
+            try:
+                # Attempt to handle different possible structures of the contour points
+                points = [(int(point[0][0]), int(point[0][1])) for point in contour]  # Common structure
+            except TypeError:
+                points = [(int(point[0]), int(point[1])) for point in contour]  # Fallback structure
+            # debug_info.append(f"Points list {points}")
+            draw.polygon(points, outline=0, width=3)
+            
+        debug_info.append(f"Converted {len(contours)} contours to image.")
+        return image
+    
 
-    def run(self, outlines, depthmap, base_layer, num_divisions, use_approximation, approximation_epsilon, shape_similarity_threshold, min_shape_area, apply_blur):
+    def convert_to_svg(self, layer_contours, base_layer_contours, shape, debug_info,
+                       corner_threshold, length_threshold, max_iterations, splice_threshold, path_precision,
+                       colormode="binary", hierarchical="cutout", mode="spline", 
+                       filter_speckle=4, color_precision=6, layer_difference=16, 
+                      ):
+        # Convert layer contours to images
+        layer_images = {layer_index: self.contours_to_image(contours, shape, debug_info) for layer_index, contours in layer_contours.items()}
+        base_layer_image = self.contours_to_image(base_layer_contours, shape, debug_info)
+
+        svg_strings = []
+
+        # Process each layer
+        for layer_index, image in layer_images.items():
+            image = image.convert("RGBA")
+            pixels = list(image.getdata())
+
+            # Convert the pixels list back to an Image object
+            width, height = image.size
+            new_image = Image.new("RGBA", (width, height))
+            new_image.putdata(pixels)
+
+            size = image.size
+            color = layer_contours[layer_index][0][1] if layer_contours[layer_index] else "black"
+            svg_str = vtracer.convert_pixels_to_svg(
+                pixels,
+                size=size,
+                colormode=colormode,
+                hierarchical=hierarchical,
+                mode=mode,
+                filter_speckle=filter_speckle,
+                color_precision=color_precision,
+                layer_difference=layer_difference,
+                corner_threshold=corner_threshold,
+                length_threshold=length_threshold,
+                max_iterations=max_iterations,
+                splice_threshold=splice_threshold,
+                path_precision=path_precision
+            )
+
+             # Perform string manipulations
+            svg_str = re.sub(r'(<path[^>]*?) fill="[^"]*"', rf'\1 fill="none" stroke="{color}"', svg_str)
+            path_pattern = re.compile(r'(<path[^>]*?d=".*?M.*?)(M.*?)(?=".*?fill=)')
+            
+            # Function to process each match
+            def process_match(match):
+                # Keep everything before the second "M" and add fill and stroke attributes
+                return f'{match.group(1)}'
+            
+            # Replace the matches in the SVG string
+            svg_str = re.sub(path_pattern, process_match, svg_str)
+
+             # Remove <svg>, </svg>, and <?xml> tags
+            svg_str = re.sub(r'<\?xml[^>]*\?>', '', svg_str)  # Remove <?xml ... ?> tags
+            svg_str = re.sub(r'<svg[^>]*>', '', svg_str)      # Remove <svg ... > tags
+            svg_str = re.sub(r'</svg>', '', svg_str)          # Remove </svg> tags
+
+            svg_strings.append(f'<g id="layer_{layer_index}" data-name="layer_{layer_index}">{svg_str.strip()}</g>')
+
+        # Process the base layer
+        base_layer_image = base_layer_image.convert("RGBA")
+        pixels = list(base_layer_image.getdata())
+        size = base_layer_image.size
+        debug_info.append(f"Pixels length: {len(pixels)}")
+
+        base_svg_str = vtracer.convert_pixels_to_svg(
+            pixels,
+            size=size,
+            colormode=colormode,
+            hierarchical=hierarchical,
+            mode=mode,
+            filter_speckle=filter_speckle,
+            color_precision=color_precision,
+            layer_difference=layer_difference,
+            corner_threshold=corner_threshold,
+            length_threshold=length_threshold,
+            max_iterations=max_iterations,
+            splice_threshold=splice_threshold,
+            path_precision=path_precision
+        )
+
+        # Perform string manipulations
+        base_svg_str = re.sub(r'(<path[^>]*?) fill="[^"]*"', rf'\1 fill="none" stroke="{color}"', base_svg_str)
+        path_pattern = re.compile(r'(<path[^>]*?d=".*?M.*?)(M.*?)(?=".*?fill=)')
+        
+        # Function to process each match
+        def process_match(match):
+            # Keep everything before the second "M" and add fill and stroke attributes
+            return f'{match.group(1)}'
+        
+        # Replace the matches in the SVG string
+        base_svg_str = re.sub(path_pattern, process_match, base_svg_str)
+
+            # Remove <svg>, </svg>, and <?xml> tags
+        base_svg_str = re.sub(r'<\?xml[^>]*\?>', '', base_svg_str)  # Remove <?xml ... ?> tags
+        base_svg_str = re.sub(r'<svg[^>]*>', '', base_svg_str)      # Remove <svg ... > tags
+        base_svg_str = re.sub(r'</svg>', '', base_svg_str)          # Remove </svg> tags
+
+         # Combine all SVG strings into one document
+        combined_svg = '<?xml version="1.0" encoding="UTF-8"?><svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:ev="http://www.w3.org/2001/xml-events" viewBox="0 0 1024 1024">'
+
+        for svg_str in svg_strings:
+            combined_svg += svg_str
+
+        combined_svg += f'<g id="layer_base" data-name="layer_base">{base_svg_str.strip()}</g>'
+        combined_svg += '</svg>'
+
+        debug_info.append("SVG conversion complete.")
+
+        return combined_svg
+
+    def run(self, outlines, depthmap, base_layer, num_divisions, use_approximation, approximation_epsilon, 
+            shape_similarity_threshold, min_shape_area, apply_blur, 
+            corner_threshold, length_threshold, max_iterations, splice_threshold, path_precision):
         debug_info = []
 
         # Section 1: Convert inputs to NumPy arrays
@@ -158,6 +308,7 @@ class LaserCutterFull:
         # Extract contours
         contours = self.extract_contours(outlines_binary, use_approximation, approximation_epsilon)
         base_layer_contours = self.extract_contours(base_layer_binary, use_approximation, approximation_epsilon)
+        
 
         # Calculate intensities
         shape_intensity = self.calculate_intensities(contours, depthmap, min_shape_area)
@@ -166,7 +317,9 @@ class LaserCutterFull:
         layer_images, layer_contours, shapes_in_layers = self.assign_shapes_to_layers(shape_intensity, outlines_binary, num_divisions)
 
         # Convert to SVG
-        combined_svg = self.convert_to_svg(layer_contours, base_layer_contours, outlines_binary.shape)
+        combined_svg = self.convert_to_svg(layer_contours, base_layer_contours, 
+                                           outlines_binary.shape, debug_info, 
+                                           corner_threshold, length_threshold, max_iterations, splice_threshold, path_precision)
 
         # Prepare the output images
         layer_images_result = []
@@ -189,6 +342,7 @@ class LaserCutterFull:
             blank_image = np.stack([blank_image]*3, axis=-1)
             layer_images_result.append(torch.tensor(blank_image).unsqueeze(0).float() / 255.0)
 
+        debug_info.append(f"Created SVGs")
         # Add base layer output
         base_layer_image = np.full_like(base_layer_binary, 255)
         cv2.drawContours(base_layer_image, base_layer_contours, -1, (0), 2)

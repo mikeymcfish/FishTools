@@ -4,3 +4,4 @@ opencv-python-headless
 svgwrite
 scikit-image
 svgtools
+vtracer

@@ -1,7 +1,9 @@
-import cv2
-import numpy as np
+import svgwrite
+from xml.etree import ElementTree as ET
 import torch
-import re
+from PIL import Image, ImageDraw
+import numpy as np
+from svgpathtools import parse_path, Path, Line, CubicBezier
 
 class Deptherize:
     def __init__(self):
@@ -21,69 +23,69 @@ class Deptherize:
     FUNCTION = "run"
     CATEGORY = "FishTools"
 
+    def modify_svg(self, svg_string):
+        svg_ns = {'svg': 'http://www.w3.org/2000/svg'}
+        tree = ET.ElementTree(ET.fromstring(svg_string))
+        root = tree.getroot()
+
+        layers = [layer for layer in root.findall('svg:g', svg_ns) if layer.get('id').startswith('layer_')]
+
+        for i, layer in enumerate(layers):
+            shade = int(255 * (1 - (i / len(layers))))
+            fill_color = f'rgb({shade},{shade},{shade})'
+            
+            for path in layer.findall('svg:path', svg_ns):
+                path.set('stroke', 'none')
+                path.set('fill', fill_color)
+
+        modified_svg_string = ET.tostring(root).decode()
+        return modified_svg_string
+
+    def svg_to_bitmap(self, svg_string):
+        svg_ns = {'svg': 'http://www.w3.org/2000/svg'}
+        tree = ET.ElementTree(ET.fromstring(svg_string))
+        root = tree.getroot()
+
+        width = 1024
+        height = 1024
+
+        image = Image.new('L', (width, height), 255)  # Create a white grayscale image
+        draw = ImageDraw.Draw(image)
+
+        layers = [layer for layer in root.findall('svg:g', svg_ns) if layer.get('id').startswith('layer_')]
+
+        for layer in layers:
+            for path in layer.findall('svg:path', svg_ns):
+                d = path.get('d')
+                parsed_path = parse_path(d)
+                for segment in parsed_path:
+                    if isinstance(segment, Line):
+                        draw.line([segment.start.real, segment.start.imag, segment.end.real, segment.end.imag], fill=0)
+                    elif isinstance(segment, CubicBezier):
+                        draw.bezier([segment.start.real, segment.start.imag,
+                                     segment.control1.real, segment.control1.imag,
+                                     segment.control2.real, segment.control2.imag,
+                                     segment.end.real, segment.end.imag], fill=0)
+
+        return image
+
     def run(self, svg_data):
         debug_info = []
 
-        # Parse the svg_data to extract layer information
-        layer_contours = self.parse_svg_data(svg_data, debug_info)
-        debug_info.append(f"Parsed layer contours: {layer_contours}")
-
-        # Initialize the image size and the background color
-        image_size = 1024
-        background_color = (0, 0, 0)
-        depth_image = np.full((image_size, image_size, 3), background_color, dtype=np.uint8)
-        debug_info.append(f"Initialized depth image of size {depth_image.shape}")
-
-        # Determine the gray shades for each layer starting from 180 to 90
-        num_layers = len(layer_contours)
-        if num_layers > 1:
-            gray_shades = [90 + int((180 - 90) * (i / (num_layers - 1))) for i in range(num_layers)]
-            gray_shades.reverse()  # Reverse to have the first layer as the brightest
-        else:
-            gray_shades = [135]  # Default to middle gray if there's only one layer
-        debug_info.append(f"Gray shades: {gray_shades}")
-
-        # Draw the filled shapes for each layer, with the brightest layer on top
-        for layer_index in reversed(range(num_layers)):
-            gray_value = gray_shades[layer_index]
-            fill_color = (gray_value, gray_value, gray_value)
-            debug_info.append(f"Layer {layer_index} with fill color {fill_color}")
-            for contour in layer_contours[layer_index]:
-                if len(contour) > 2:  # Ensure the contour has enough points to form a shape
-                    points = np.array(contour, dtype=np.int32).reshape((-1, 1, 2))
-                    cv2.fillPoly(depth_image, [points], fill_color)
-                    debug_info.append(f"Filled contour in layer {layer_index}")
-
         # Convert to the required output format
-        depth_image = torch.tensor(depth_image).unsqueeze(0).float() / 255.0
+        svg_new = self.modify_svg(svg_data)
+
+        # Convert modified SVG to bitmap
+        image = self.svg_to_bitmap(svg_new)
+
+        image_np = np.array(image)  # Convert to numpy array
+
+        # Convert numpy array to PyTorch tensor
+        depth_image = torch.tensor(image_np).unsqueeze(0).float() / 255.0
+
         debug_info.append(f"Depth image shape: {depth_image.shape}")
 
         return (depth_image, "\n".join(debug_info))
-
-    def parse_svg_data(self, svg_data, debug_info):
-        # Parse the svg_data to extract contours for each layer
-        # This assumes that svg_data contains SVG-like path data
-        layer_contours = []
-        layer_pattern = re.compile(r'<g id="layer_(\d+)".*?>(.*?)</g>', re.DOTALL)
-        path_pattern = re.compile(r'<polyline[^>]*points="([^"]+)"[^>]*>', re.DOTALL)
-
-        layers = layer_pattern.findall(svg_data)
-        debug_info.append(f"Found {len(layers)} layers")
-        
-        for layer_index, layer_content in layers:
-            contours = []
-            paths = path_pattern.findall(layer_content)
-            debug_info.append(f"Layer {layer_index} contains {len(paths)} paths")
-            for path in paths:
-                points = []
-                for point in path.split():
-                    x, y = map(float, point.split(','))
-                    points.append((x, y))
-                if points:
-                    contours.append(points)
-            layer_contours.append(contours)
-
-        return layer_contours
 
 NODE_CLASS_MAPPINGS = {
     "Deptherize": Deptherize
