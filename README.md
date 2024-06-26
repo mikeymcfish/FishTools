@@ -1,50 +1,117 @@
 
-# LaserCutterFull and Deptherize Nodes
-
-## Overview
-
-This repository contains two custom nodes, `LaserCutterFull` and `Deptherize`, designed for use in image processing workflows. The `LaserCutterFull` node processes input images to generate layers for laser cutting, while the `Deptherize` node converts SVG data into a depth map image.
+# FishTools
 
 ## LaserCutterFull
 
+***
+
 ### Description
 
-The `LaserCutterFull` node processes an outline image and a depth map to generate multiple layers for laser cutting. Each layer is assigned based on the intensity values from the depth map, and an additional base layer can be specified.
+The `LaserCutterFull` node processes an outline image, a depth map, and a base layer image to generate multiple layers for laser cutting. It assigns each layer based on the intensity values from the depth map and creates an SVG output combining all layers.
+
+<img src="examples/mickey.png" alt="Mickey example" width="300" height="300">
 
 ### Inputs
 
 - `outlines`: The outline image (in grayscale). This should be simple line art.
-- `depthmap`: The depth map image (in grayscale). I use depthanything with a mask to filter out background noise.
-- `base_layer`: The base layer image (in grayscale). This is the bottom of the laser cutter art. I use the mask from depthanything.
-- `num_divisions`: The number of layers to divide the depth map into. 
+- `depthmap`: The depth map image (in grayscale). Use depth-to-anything with a mask to filter out background noise.
+- `base_layer`: The base layer image (in grayscale). This is the bottom of the laser cutter art. Use the mask from depth-to-anything.
+- `num_divisions`: The number of layers to divide the depth map into.
 - `use_approximation`: Boolean to toggle the use of contour approximation.
 - `approximation_epsilon`: Epsilon value for the contour approximation.
 - `shape_similarity_threshold`: Threshold for filtering nearly identical shapes.
+- `min_shape_area`: Minimum area for a shape to be considered.
+- `apply_blur`: Boolean to apply Gaussian blur to the depth map.
+- `corner_threshold`: Threshold for corner detection in the SVG conversion.
+- `length_threshold`: Threshold for path length in the SVG conversion.
+- `max_iterations`: Maximum number of iterations for the SVG conversion.
+- `splice_threshold`: Threshold for splicing paths in the SVG conversion.
+- `path_precision`: Precision for path coordinates in the SVG output.
 
 ### Outputs
 
 - `layer0` to `layer5`: The six layers generated for laser cutting.
 - `base_layer`: The base layer image.
-- `combined_svg`: The combined SVG string of all layers. *Note* You will need to save this file with a .svg extension. In the example I am doing this with a simple Save Text node
+- `combined_svg`: The combined SVG string of all layers. *Note* You will need to save this file with a .svg extension. In the example workflow, this is done with a simple Save Text node.
 - `debug_info`: Debug information string.
 
 ### Variables
 
-- `num_divisions`: Integer specifying the number of depth layers to generate. Minimum is 2, maximum is 6, default is 6. 
+- `num_divisions`: Integer specifying the number of depth layers to generate. Minimum is 2, maximum is 6, default is 6.
 - `use_approximation`: Boolean to enable or disable the use of contour approximation.
 - `approximation_epsilon`: Float specifying the epsilon value for contour approximation. Default is 0.01, range is 0.001 to 1.0.
 - `shape_similarity_threshold`: Float specifying the threshold for filtering nearly identical shapes. Default is 0.01, range is 0.0 to 1.0.
+- `min_shape_area`: Float specifying the minimum area for a shape to be considered. Default is 250.0, range is 0.0 to 1000.0.
+- `apply_blur`: Boolean to apply Gaussian blur to the depth map. Default is False.
+- `corner_threshold`: Integer for corner detection in SVG conversion. Default is 60, range is 0 to 100.
+- `length_threshold`: Float for path length threshold in SVG conversion. Default is 4.0, range is 0.0 to 10.0.
+- `max_iterations`: Integer for maximum iterations in SVG conversion. Default is 10, range is 1 to 20.
+- `splice_threshold`: Integer for splicing paths in SVG conversion. Default is 45, range is 1 to 100.
+- `path_precision`: Integer for precision of path coordinates in SVG. Default is 3, range is 1 to 10.
 
-### Tips
+### Implementation Details
 
-- Try different values for num_divisions. I found good results with 4, 5, and 6
-- use-approximation is kind of garbage
-- shape-similarity is useful if your image has a lot of fine details you want to filter out. Something around 200 has been good for me but try out different values
-- The final SVG is very complex with jagged lines (I'm working on this). If you bring it into Illustrator a simple path smooth fixes this.
+1. The node preprocesses input images and extracts contours from the outline and base layer images.
+2. It calculates intensities for each shape based on the depth map.
+3. Shapes are assigned to different layers based on their intensities.
+4. The node generates an SVG for each layer and combines them into a single SVG file.
+5. The output includes separate image layers, a combined SVG, and debug information.
+
+### Usage Tips
+
+- Ensure your input images (outlines, depth map, and base layer) are properly prepared and aligned.
+- Experiment with the `num_divisions` parameter to achieve the desired level of depth separation.
+- Adjust `min_shape_area` to filter out small, unwanted shapes.
+- Use the `apply_blur` option if the depth map contains noise that affects layer assignment.
+- Fine-tune SVG conversion parameters (`corner_threshold`, `length_threshold`, etc.) for optimal vector output.
+
+### Note on SVG Output
+
+The combined SVG output includes all layers and the base layer. Each layer is grouped with a unique ID for easy manipulation in vector graphics software. Remember to save the SVG output with a .svg extension using a Save Text node or similar method in your workflow.
+
+***
+## AnaglyphCreator
+
+### Description
+
+The `AnaglyphCreator` node generates anaglyph 3D images from a 2D image and its corresponding depth map. It creates a stereoscopic effect by shifting the color channels based on the depth information, resulting in an image that appears three-dimensional when viewed with red-cyan 3D glasses.
+
+<img src="examples/baller3d.png" alt="Mickey example" width="500" height="500">
+
+### Inputs
+
+- `image`: The original 2D image (in color or grayscale).
+- `depthmap`: The depth map image (in grayscale). This represents the relative depth of each pixel in the original image.
+- `anaglyph_shift`: A float value determining the intensity of the 3D effect.
+
+### Outputs
+
+- `anaglyph_image`: The final anaglyph 3D image.
+- `visualization_image`: A visualization of the pixel shifts applied to create the anaglyph effect for debugging purposes.
+- `overlap_mask`: An image showing the overlap between the left and right eye views for debugging purposes.
+- `left_debug_image`: The left eye view (cyan channels) for debugging purposes.
+- `right_debug_image`: The right eye view (red channel) for debugging purposes.
+
+### Variables
+
+- `anaglyph_shift`: Float specifying the intensity of the 3D effect. Minimum is 0.0, maximum is 20.0, default is 5.0, with a step of 0.1.
+
+### Tips for Best Results
+
+1. Use high-contrast images with clear edges for the best 3D effect.
+2. Experiment with the `anaglyph_shift` value to find the right balance between 3D depth and viewing comfort.
+3. Ensure your depth map accurately represents the relative depths in your image for the most realistic 3D effect.
+4. For color images, be aware that some color information may be lost due to the nature of anaglyph 3D creation.
+
+### Known Limitations
+
+1. Color images may appear slightly blurry in the final anaglyph. This is a known issue that may be addressed in future updates.
+2. Very large shift values may cause noticeable artifacts, especially around the edges of the image.
+
 
 ## Deptherize
 
-### NOTE: 
+### **NOTE**: 
 
 The current version of LaserCutterFull does not work with Deptherize (which is really only for making a fake preview anyway)
 
@@ -83,6 +150,9 @@ numpy
 opencv-python-headless
 svgwrite
 scikit-image
+svgtools
+vtracer
+svgpathtools
 ```
 
 ## License
