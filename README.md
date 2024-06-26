@@ -10,6 +10,7 @@
 The `LaserCutterFull` node processes an outline image, a depth map, and a base layer image to generate multiple layers for laser cutting. It assigns each layer based on the intensity values from the depth map and creates an SVG output combining all layers.
 
 <img src="Examples/mickey.png" alt="Mickey example" width="300" height="300">
+<img src="Examples/mickeyIRL.png" alt="Mickey example" width="300" height="300">
 
 ### Inputs
 
