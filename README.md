@@ -9,7 +9,7 @@
 
 The `LaserCutterFull` node processes an outline image, a depth map, and a base layer image to generate multiple layers for laser cutting. It assigns each layer based on the intensity values from the depth map and creates an SVG output combining all layers.
 
-<img src="./Examples/mickey.png" alt="Mickey example" width="300" height="300">
+<img src="Examples/mickey.png" alt="Mickey example" width="300" height="300">
 
 ### Inputs
 
@@ -76,7 +76,7 @@ The combined SVG output includes all layers and the base layer. Each layer is gr
 
 The `AnaglyphCreator` node generates anaglyph 3D images from a 2D image and its corresponding depth map. It creates a stereoscopic effect by shifting the color channels based on the depth information, resulting in an image that appears three-dimensional when viewed with red-cyan 3D glasses.
 
-<img src="Examples/Baller3d.png" alt="Mickey example" width="500" height="500">
+<img src="Examples/Baller3D.png" alt="Mickey example" width="500" height="500">
 
 ### Inputs
 
