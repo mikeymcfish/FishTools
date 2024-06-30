@@ -6,6 +6,7 @@
 """
 from .LaserCutterFull import LaserCutterFull
 from .AnaglyphCreator import AnaglyphCreator
+from .AnaglyphCreatorPro import AnaglyphCreatorPro
 
 # I copied this init from LtCmData
 version_str = "0.2"
@@ -13,14 +14,17 @@ print(f"### Loading: FishTools ({version_str})")
 
 node_list = [
     "LaserCutterFull",
-    "AnaglyphCreator"
+    "AnaglyphCreator",
+    "AnaglyphCreatorPro"
 ]
 
 NODE_CLASS_MAPPINGS = {
     "LaserCutterFull": LaserCutterFull,
-    "AnaglyphCreator" : AnaglyphCreator
+    "AnaglyphCreator" : AnaglyphCreator,
+    "AnaglyphCreatorPro" : AnaglyphCreatorPro
     }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LaserCutterFull": "LaserCutterFull",
-    "AnaglyphCreator": "AnaglyphCreator"
+    "AnaglyphCreator": "AnaglyphCreator",
+    "AnaglyphCreatorPro" : "AnaglyphCreatorPro"
     }
