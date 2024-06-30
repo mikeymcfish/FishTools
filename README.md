@@ -115,9 +115,9 @@ The `AnaglyphCreator` node generates anaglyph 3D images from a 2D image and its 
 The `AnaglyphCreatorPro` node is an advanced version of the AnaglyphCreator, offering more control and flexibility in creating stereoscopic 3D images. It generates anaglyph 3D images, side-by-side stereo pairs, or top-bottom stereo pairs from a 2D image and its corresponding depth map. This node provides various parameters to fine-tune the 3D effect and offers different fill techniques for handling occlusions.
 
 <img src="Examples/AnaglyphPro/building.png" alt="example" width="500" height="500">
-<img src="Examples/AnaglyphPro/building-s.png" alt="example" width="500" height="500">
+<img src="Examples/AnaglyphPro/building-s.png" alt="example" width="500" height="250">
 <img src="Examples/AnaglyphPro/skele.png" alt="example" width="500" height="500">
-<img src="Examples/AnaglyphPro/skele-s.png" alt="example" width="500" height="500">
+<img src="Examples/AnaglyphPro/skele-s.png" alt="example" width="500" height="250">
 
 
 ### Inputs
