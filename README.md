@@ -1,4 +1,3 @@
-
 # FishTools
 
 ## LaserCutterFull
@@ -77,7 +76,7 @@ The combined SVG output includes all layers and the base layer. Each layer is gr
 
 The `AnaglyphCreator` node generates anaglyph 3D images from a 2D image and its corresponding depth map. It creates a stereoscopic effect by shifting the color channels based on the depth information, resulting in an image that appears three-dimensional when viewed with red-cyan 3D glasses.
 
-<img src="Examples/Baller3D.png" alt="Mickey example" width="500" height="500">
+<img src="Examples/Baller3D.png" alt="Baller example" width="500" height="500">
 
 ### Inputs
 
@@ -109,6 +108,54 @@ The `AnaglyphCreator` node generates anaglyph 3D images from a 2D image and its 
 1. Color images may appear slightly blurry in the final anaglyph. This is a known issue that may be addressed in future updates.
 2. Very large shift values may cause noticeable artifacts, especially around the edges of the image.
 
+## AnaglyphCreatorPro
+
+### Description
+
+The `AnaglyphCreatorPro` node is an advanced version of the AnaglyphCreator, offering more control and flexibility in creating stereoscopic 3D images. It generates anaglyph 3D images, side-by-side stereo pairs, or top-bottom stereo pairs from a 2D image and its corresponding depth map. This node provides various parameters to fine-tune the 3D effect and offers different fill techniques for handling occlusions.
+
+<img src="Examples/AnaglyphPro/building.png" alt="example" width="500" height="500">
+<img src="Examples/AnaglyphPro/building-s.png" alt="example" width="500" height="500">
+<img src="Examples/AnaglyphPro/skele.png" alt="example" width="500" height="500">
+<img src="Examples/AnaglyphPro/skele-s.png" alt="example" width="500" height="500">
+
+
+### Inputs
+
+- `image`: The original 2D image (in color).
+- `depthmap`: The depth map image (in grayscale). This represents the relative depth of each pixel in the original image.
+- `divergence`: A float value determining the intensity of the 3D effect.
+- `separation`: A float value controlling the horizontal separation between left and right views.
+- `stereo_balance`: A float value balancing the stereo effect between left and right views.
+- `stereo_offset_exponent`: A float value controlling the non-linearity of the stereo offset.
+- `fill_technique`: The method used to fill occluded areas ("naive", "naive_interpolating", "polylines_soft", "polylines_sharp").
+- `output_mode`: The type of output to generate ("red-cyan-anaglyph", "left-right", "top-bottom").
+
+### Outputs
+
+- `IMAGE`: The final stereoscopic image based on the selected output mode.
+
+### Variables
+
+- `divergence`: Float specifying the intensity of the 3D effect. Range: 0.0 to 20.0, default: 5.0, step: 0.1.
+- `separation`: Float controlling the horizontal separation. Range: -10.0 to 10.0, default: 0.0, step: 0.1.
+- `stereo_balance`: Float balancing left and right views. Range: -1.0 to 1.0, default: 0.0, step: 0.1.
+- `stereo_offset_exponent`: Float for non-linear stereo offset. Range: 0.1 to 5.0, default: 1.0, step: 0.1.
+- `fill_technique`: String selecting the occlusion fill method. Options: "naive", "naive_interpolating", "polylines_soft", "polylines_sharp".
+- `output_mode`: String selecting the output type. Options: "red-cyan-anaglyph", "left-right", "top-bottom".
+
+### Tips for Best Results
+
+1. Experiment with `divergence` and `separation` to find the right balance between 3D depth and viewing comfort.
+2. Use `stereo_balance` to adjust the relative shift between left and right views.
+3. Adjust `stereo_offset_exponent` to control the non-linearity of the depth effect.
+4. Try different `fill_technique` options to handle occlusions effectively, especially for images with large depth variations.
+5. Choose the appropriate `output_mode` based on your intended viewing method (anaglyph glasses or stereo displays).
+
+### Known Limitations
+
+1. Very large divergence or separation values may cause noticeable artifacts, especially around the edges of the image.
+2. The effectiveness of different fill techniques may vary depending on the image content and depth map quality.
 
 ## Deptherize
 
