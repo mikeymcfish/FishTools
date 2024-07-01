@@ -116,8 +116,8 @@ The `AnaglyphCreatorPro` node is an advanced version of the AnaglyphCreator, off
 
 <img src="Examples/AnaglyphPro/building.png" alt="example" width="500" height="500">
 <img src="Examples/AnaglyphPro/building-s.png" alt="example" width="500" height="250">
-<img src="Examples/AnaglyphPro/skele.png" alt="example" width="500" height="500">
-<img src="Examples/AnaglyphPro/skele-s.png" alt="example" width="500" height="250">
+<img src="Examples/AnaglyphPro/t2.png" alt="example" width="500" height="500">
+<img src="Examples/AnaglyphPro/t2-s.png" alt="example" width="500" height="250">
 
 
 ### Inputs
