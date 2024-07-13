@@ -7,24 +7,28 @@
 from .LaserCutterFull import LaserCutterFull
 from .AnaglyphCreator import AnaglyphCreator
 from .AnaglyphCreatorPro import AnaglyphCreatorPro
+from .ShadowMap import ShadowMap
 
 # I copied this init from LtCmData
-version_str = "0.2"
+version_str = "0.3"
 print(f"### Loading: FishTools ({version_str})")
 
 node_list = [
     "LaserCutterFull",
     "AnaglyphCreator",
-    "AnaglyphCreatorPro"
+    "AnaglyphCreatorPro",
+    "ShadowMap"
 ]
 
 NODE_CLASS_MAPPINGS = {
     "LaserCutterFull": LaserCutterFull,
     "AnaglyphCreator" : AnaglyphCreator,
-    "AnaglyphCreatorPro" : AnaglyphCreatorPro
+    "AnaglyphCreatorPro" : AnaglyphCreatorPro,
+    "ShadowMap" : ShadowMap
     }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LaserCutterFull": "LaserCutterFull",
     "AnaglyphCreator": "AnaglyphCreator",
-    "AnaglyphCreatorPro" : "AnaglyphCreatorPro"
+    "AnaglyphCreatorPro" : "AnaglyphCreatorPro",
+    "ShadowMap" : "Shadow Map"
     }
