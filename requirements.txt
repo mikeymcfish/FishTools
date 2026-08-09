@@ -6,3 +6,4 @@ scikit-image
 svgtools
 vtracer
 svgpathtools
+lxml
